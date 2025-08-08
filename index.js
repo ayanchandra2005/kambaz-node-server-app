@@ -11,11 +11,13 @@ import EnrollmentRoutes from "./Kambaz/Enrollments/routes.js";
 
 const app = express();
 
-// CORS setup
 app.use(
   cors({
     credentials: true,
-    origin: process.env.CLIENT_URL || "http://localhost:5173",
+    origin:
+      process.env.SERVER_ENV === "development"
+        ? "http://localhost:5173"
+        : process.env.CLIENT_URL, 
   })
 );
 
@@ -31,7 +33,6 @@ if (process.env.SERVER_ENV !== "development") {
   sessionOptions.cookie = {
     sameSite: "none",
     secure: true,
-    // removed domain — causes issues with different domains
   };
 }
 
