@@ -11,6 +11,7 @@ import EnrollmentRoutes from "./Kambaz/Enrollments/routes.js";
 
 const app = express();
 
+// CORS
 app.use(
   cors({
     credentials: true,
@@ -22,6 +23,7 @@ app.use(
 );
 
 // Session setup
+// SESSION
 const sessionOptions = {
   secret: process.env.SESSION_SECRET || "kambaz",
   resave: false,
@@ -29,10 +31,13 @@ const sessionOptions = {
 };
 
 if (process.env.SERVER_ENV !== "development") {
+  // We're behind a proxy on Render; needed so secure cookies work
+  app.set("trust proxy", 1);
   sessionOptions.proxy = true;
   sessionOptions.cookie = {
-    sameSite: "none",
-    secure: true,
+    sameSite: "none",  // REQUIRED for cross-site
+    secure: true,      // REQUIRED on HTTPS
+    // Do NOT set 'domain' unless you really know you need it
   };
 }
 
