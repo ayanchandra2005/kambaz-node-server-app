@@ -1,55 +1,57 @@
 import express from "express";
 import mongoose from "mongoose";
+import cors from "cors";
+import session from "express-session";
+import "dotenv/config";
 
 import Lab5 from "./Lab5/index.js";
-import cors from "cors";
 import UserRoutes from "./Kambaz/Users/routes.js";
 import CourseRoutes from "./Kambaz/Courses/routes.js";
-import "dotenv/config";
-import session from "express-session";
 import ModuleRoutes from "./Kambaz/Modules/routes.js";
 import AssignmentRoutes from "./Kambaz/Assignments/routes.js";
 import EnrollmentRoutes from "./Kambaz/Enrollments/routes.js";
 
-const CONNECTION_STRING = process.env.MONGO_CONNECTION_STRING || "mongodb://127.0.0.1:27017/kambaz"
+const CONNECTION_STRING =
+  process.env.MONGO_CONNECTION_STRING ||
+  "mongodb://127.0.0.1:27017/kambaz";
 
 mongoose
   .connect(CONNECTION_STRING)
-  .then(() => console.log("Connected to MongoDB"))
+  .then(() => console.log("✅ Connected to MongoDB"))
   .catch((e) => {
-    console.error("MongoDB connection error:", e);
+    console.error("❌ MongoDB connection error:", e);
     process.exit(1);
   });
 
 const app = express();
 
+// Determine environment
+const IS_DEV = process.env.NODE_ENV !== "production";
+
 // CORS
 app.use(
   cors({
     credentials: true,
-    origin:
-      process.env.SERVER_ENV === "development"
-        ? "http://localhost:5173"
-        : process.env.CLIENT_URL, 
+    origin: IS_DEV
+      ? "http://localhost:5173"
+      : process.env.NETLIFY_URL, // must match your Netlify site exactly
   })
 );
 
 // Session setup
-// SESSION
 const sessionOptions = {
   secret: process.env.SESSION_SECRET || "kambaz",
   resave: false,
   saveUninitialized: false,
 };
 
-if (process.env.SERVER_ENV !== "development") {
-  // We're behind a proxy on Render; needed so secure cookies work
-  app.set("trust proxy", 1);
+if (!IS_DEV) {
+  app.set("trust proxy", 1); // required on Render for secure cookies
   sessionOptions.proxy = true;
   sessionOptions.cookie = {
-    sameSite: "none",  // REQUIRED for cross-site
-    secure: true,      // REQUIRED on HTTPS
-    // Do NOT set 'domain' unless you really know you need it
+    sameSite: "none",
+    secure: true,
+    domain: process.env.NODE_SERVER_DOMAIN, // e.g. kambaz-a6-server.onrender.com (NO protocol)
   };
 }
 
@@ -66,7 +68,8 @@ ModuleRoutes(app);
 AssignmentRoutes(app);
 EnrollmentRoutes(app);
 
-// Server listen
-app.listen(process.env.PORT || 4000, () => {
-  console.log(`Server running on port ${process.env.PORT || 4000}`);
+// Start server
+const PORT = process.env.PORT || 4000;
+app.listen(PORT, () => {
+  console.log(`🚀 Server running on port ${PORT}`);
 });
