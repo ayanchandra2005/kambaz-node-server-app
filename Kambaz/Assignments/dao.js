@@ -1,31 +1,28 @@
-import Database from "../Database/index.js";
-import { v4 as generateId } from "uuid";
+import model from "./model.js";
+import { v4 as uuidv4 } from "uuid";
 
 export const getAssignmentsByCourse = (courseId) => {
-  return Database.assignments.filter((a) => a.course === courseId);
+  return model.find({ course: courseId });
 };
 
 export const getAssignment = (id) => {
-  return Database.assignments.find((a) => a._id === id);
+  return model.findById(id);
 };
 
 export const addAssignment = (assignment) => {
-  const assignmentWithId = {
-    ...assignment,
-    _id: assignment._id ? assignment._id : generateId(),
-  };
-  Database.assignments = [...Database.assignments, assignmentWithId];
-  return assignmentWithId;
+  const toCreate = { ...assignment };
+  if (!toCreate._id) toCreate._id = uuidv4();
+  return model.create(toCreate);
 };
 
 export const modifyAssignment = (id, updates) => {
-  const target = Database.assignments.find((a) => a._id === id);
-  if (!target) return null;
-  Object.assign(target, updates);
-  return target;
+  return model.findOneAndUpdate(
+    { _id: id },
+    { $set: updates },
+    { new: true }         
+  );
 };
 
 export const removeAssignment = (id) => {
-  Database.assignments = Database.assignments.filter((a) => a._id !== id);
-  return { status: "deleted" };
+  return model.deleteOne({ _id: id });
 };

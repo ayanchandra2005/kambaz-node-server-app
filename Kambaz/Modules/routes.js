@@ -10,7 +10,7 @@ export default function ModuleRoutes(app) {
   const updateModule = async (req, res) => {
     const { moduleId } = req.params;
     const moduleUpdates = req.body;
-    const updated = modulesDao.updateModule(moduleId, moduleUpdates);
+    const updated = await modulesDao.updateModule(moduleId, moduleUpdates);
     if (!updated) {
       res.status(404).json({ message: "Module not found" });
       return;
