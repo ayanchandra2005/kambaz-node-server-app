@@ -13,8 +13,7 @@ import EnrollmentRoutes from "./Kambaz/Enrollments/routes.js";
 import QuizRoutes from "./Kambaz/Quizzes/routes.js";
 
 const CONNECTION_STRING =
-  process.env.MONGO_CONNECTION_STRING ||
-  "mongodb://127.0.0.1:27017/kambaz";
+  process.env.MONGO_CONNECTION_STRING || "mongodb://127.0.0.1:27017/kambaz";
 
 mongoose
   .connect(CONNECTION_STRING)
@@ -25,21 +24,37 @@ mongoose
   });
 
 const app = express();
-
-// Determine environment
 const IS_DEV = process.env.NODE_ENV !== "production";
 
-// CORS
-app.use(
-  cors({
-    credentials: true,
-    origin: IS_DEV
-      ? "http://localhost:5173"
-      : process.env.NETLIFY_URL, // must match your Netlify site exactly
-  })
-);
+/** ---------- CORS ---------- **/
+/* Allow your local dev origin AND your Netlify site(s). You can add more by env. */
+const KNOWN_NETLIFY =
+  process.env.NETLIFY_URL || "https://kambaz-react-web-app-su2-2025-ayan.netlify.app";
 
-// Session setup
+/* Optional: allow branch/preview deploys too (subdomain prefix before --). */
+const NETLIFY_PATTERN = /\.netlify\.app$/;
+
+const ALLOWED_ORIGINS = [
+  "http://localhost:5173",
+  KNOWN_NETLIFY,
+  process.env.ADDITIONAL_ORIGIN_1,
+  process.env.ADDITIONAL_ORIGIN_2,
+].filter(Boolean);
+
+const corsOptions = {
+  credentials: true,
+  origin(origin, cb) {
+    if (!origin) return cb(null, true); // curl/postman or same-origin
+    const ok =
+      ALLOWED_ORIGINS.includes(origin) || NETLIFY_PATTERN.test(origin);
+    cb(ok ? null : new Error("Not allowed by CORS"), ok);
+  },
+};
+
+app.use(cors(corsOptions));
+app.options(/.*/, cors(corsOptions));
+
+/** ---------- Sessions ---------- **/
 const sessionOptions = {
   secret: process.env.SESSION_SECRET || "kambaz",
   resave: false,
@@ -47,21 +62,22 @@ const sessionOptions = {
 };
 
 if (!IS_DEV) {
-  app.set("trust proxy", 1); // required on Render for secure cookies
-  sessionOptions.proxy = true;
+  // Behind Render's proxy; needed for secure cookies
+  app.set("trust proxy", 1);
   sessionOptions.cookie = {
     sameSite: "none",
     secure: true,
-    domain: process.env.NODE_SERVER_DOMAIN, // e.g. kambaz-a6-server.onrender.com (NO protocol)
+    // IMPORTANT: don't set `domain` for cross-site unless you truly need it.
+    // Let the browser scope the cookie to your Render API host.
   };
 }
 
 app.use(session(sessionOptions));
 
-// JSON parsing
+/** ---------- Body parsing ---------- **/
 app.use(express.json());
 
-// Routes
+/** ---------- Routes ---------- **/
 UserRoutes(app);
 CourseRoutes(app);
 Lab5(app);
@@ -70,8 +86,10 @@ AssignmentRoutes(app);
 EnrollmentRoutes(app);
 QuizRoutes(app);
 
-// Start server
+/** ---------- Start ---------- **/
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
+  console.log(`NODE_ENV=${process.env.NODE_ENV}`);
+  console.log(`Allowed origins:`, ALLOWED_ORIGINS);
 });
