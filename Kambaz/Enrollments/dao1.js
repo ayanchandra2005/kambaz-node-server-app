@@ -39,3 +39,6 @@ export function enrollUserInCourse(user, course) {
 export function unenrollUserFromCourse(user, course) {
   return model.deleteOne({ user, course });
 }
+
+export const findEnrollmentsByUserId = (userId) =>
+  model.find({ user: userId }).populate("course");

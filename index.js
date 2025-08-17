@@ -13,7 +13,8 @@ import EnrollmentRoutes from "./Kambaz/Enrollments/routes.js";
 import QuizRoutes from "./Kambaz/Quizzes/routes.js";
 
 const CONNECTION_STRING =
-  process.env.MONGO_CONNECTION_STRING || "mongodb://127.0.0.1:27017/kambaz";
+  process.env.MONGO_CONNECTION_STRING ||
+  "mongodb://127.0.0.1:27017/kambaz";
 
 mongoose
   .connect(CONNECTION_STRING)
@@ -24,50 +25,43 @@ mongoose
   });
 
 const app = express();
+
+// Determine environment
 const IS_DEV = process.env.NODE_ENV !== "production";
 
-/* -------------------- CORS -------------------- */
-/* Echoes back the request Origin and allows cookies.
-   Handles preflight automatically. This works for:
-   - Local dev (Vite)
-   - Netlify production + branch deploys
-   - Any preview URL
-*/
-app.use(cors({ origin: true, credentials: true }));
-app.options("*", cors({ origin: true, credentials: true }));
+// CORS
+app.use(
+  cors({
+    credentials: true,
+    origin: IS_DEV
+      ? "http://localhost:5173"
+      : process.env.NETLIFY_URL, // must match your Netlify site exactly
+  })
+);
 
-/* -------------- Session / Cookies -------------- */
-/* For cross-site cookies (Netlify -> Render) you need:
-   - trust proxy (Render)
-   - secure cookies
-   - SameSite=None
-*/
+// Session setup
 const sessionOptions = {
   secret: process.env.SESSION_SECRET || "kambaz",
   resave: false,
   saveUninitialized: false,
-  cookie: {},
 };
 
 if (!IS_DEV) {
-  app.set("trust proxy", 1);           // required on Render for secure cookies
+  app.set("trust proxy", 1); // required on Render for secure cookies
   sessionOptions.proxy = true;
   sessionOptions.cookie = {
     sameSite: "none",
     secure: true,
-    httpOnly: true,
-    maxAge: 1000 * 60 * 60 * 24 * 7,   // 7 days
+    domain: process.env.NODE_SERVER_DOMAIN, // e.g. kambaz-a6-server.onrender.com (NO protocol)
   };
-  // IMPORTANT: do NOT set a hardcoded cookie "domain" unless you know it.
-  // A wrong domain prevents the browser from storing the cookie.
 }
 
 app.use(session(sessionOptions));
 
-/* -------------------- Body Parsing -------------------- */
+// JSON parsing
 app.use(express.json());
 
-/* -------------------- Routes -------------------- */
+// Routes
 UserRoutes(app);
 CourseRoutes(app);
 Lab5(app);
@@ -76,7 +70,7 @@ AssignmentRoutes(app);
 EnrollmentRoutes(app);
 QuizRoutes(app);
 
-/* -------------------- Start -------------------- */
+// Start server
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
