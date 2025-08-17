@@ -2,6 +2,7 @@ import express from "express";
 import mongoose from "mongoose";
 import cors from "cors";
 import session from "express-session";
+import MongoStore from "connect-mongo";               // ⬅️ add
 import "dotenv/config";
 
 import Lab5 from "./Lab5/index.js";
@@ -15,6 +16,7 @@ import QuizRoutes from "./Kambaz/Quizzes/routes.js";
 const CONNECTION_STRING =
   process.env.MONGO_CONNECTION_STRING || "mongodb://127.0.0.1:27017/kambaz";
 
+// DB connect
 mongoose
   .connect(CONNECTION_STRING)
   .then(() => console.log("✅ Connected to MongoDB"))
@@ -27,11 +29,9 @@ const app = express();
 const IS_DEV = process.env.NODE_ENV !== "production";
 
 /** ---------- CORS ---------- **/
-/* Allow your local dev origin AND your Netlify site(s). You can add more by env. */
 const KNOWN_NETLIFY =
   process.env.NETLIFY_URL || "https://kambaz-react-web-app-su2-2025-ayan.netlify.app";
 
-/* Optional: allow branch/preview deploys too (subdomain prefix before --). */
 const NETLIFY_PATTERN = /\.netlify\.app$/;
 
 const ALLOWED_ORIGINS = [
@@ -44,32 +44,35 @@ const ALLOWED_ORIGINS = [
 const corsOptions = {
   credentials: true,
   origin(origin, cb) {
-    if (!origin) return cb(null, true); // curl/postman or same-origin
+    if (!origin) return cb(null, true);
     const ok =
       ALLOWED_ORIGINS.includes(origin) || NETLIFY_PATTERN.test(origin);
     cb(ok ? null : new Error("Not allowed by CORS"), ok);
   },
 };
-
 app.use(cors(corsOptions));
 app.options(/.*/, cors(corsOptions));
 
-/** ---------- Sessions ---------- **/
+/** ---------- Sessions (Mongo-backed) ---------- **/
 const sessionOptions = {
   secret: process.env.SESSION_SECRET || "kambaz",
   resave: false,
   saveUninitialized: false,
+  store: MongoStore.create({
+    mongoUrl: CONNECTION_STRING,
+    collectionName: "sessions",
+    ttl: 14 * 24 * 60 * 60, // 14 days
+    autoRemove: "native",
+  }),
+  cookie: {
+    secure: !IS_DEV,                 // secure cookie in production
+    sameSite: IS_DEV ? "lax" : "none",
+    // do NOT set domain; let browser scope it to your Render host
+  },
 };
 
 if (!IS_DEV) {
-  // Behind Render's proxy; needed for secure cookies
-  app.set("trust proxy", 1);
-  sessionOptions.cookie = {
-    sameSite: "none",
-    secure: true,
-    // IMPORTANT: don't set `domain` for cross-site unless you truly need it.
-    // Let the browser scope the cookie to your Render API host.
-  };
+  app.set("trust proxy", 1);        // required on Render for secure cookies
 }
 
 app.use(session(sessionOptions));
