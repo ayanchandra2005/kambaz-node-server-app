@@ -10,6 +10,7 @@ import CourseRoutes from "./Kambaz/Courses/routes.js";
 import ModuleRoutes from "./Kambaz/Modules/routes.js";
 import AssignmentRoutes from "./Kambaz/Assignments/routes.js";
 import EnrollmentRoutes from "./Kambaz/Enrollments/routes.js";
+import QuizRoutes from "./Kambaz/Quizzes/routes.js";
 
 const CONNECTION_STRING =
   process.env.MONGO_CONNECTION_STRING ||
@@ -67,6 +68,7 @@ Lab5(app);
 ModuleRoutes(app);
 AssignmentRoutes(app);
 EnrollmentRoutes(app);
+QuizRoutes(app);
 
 // Start server
 const PORT = process.env.PORT || 4000;
