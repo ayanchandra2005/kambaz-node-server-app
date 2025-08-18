@@ -1,8 +1,8 @@
+// index.js
 import express from "express";
 import mongoose from "mongoose";
 import cors from "cors";
 import session from "express-session";
-import MongoStore from "connect-mongo";               // ⬅️ add
 import "dotenv/config";
 
 import Lab5 from "./Lab5/index.js";
@@ -28,59 +28,32 @@ mongoose
 const app = express();
 const IS_DEV = process.env.NODE_ENV !== "production";
 
-/** ---------- CORS ---------- **/
-const KNOWN_NETLIFY =
-  process.env.NETLIFY_URL || "https://kambaz-react-web-app-su2-2025-ayan.netlify.app";
+/* ---------- CORS (minimal + works for Netlify/Render/localhost) ---------- */
+// Reflect the request Origin and allow credentials (sets ACAO dynamically)
+app.use(cors({ origin: true, credentials: true }));
+// app.options("*", cors({ origin: true, credentials: true }));
 
-const NETLIFY_PATTERN = /\.netlify\.app$/;
-
-const ALLOWED_ORIGINS = [
-  "http://localhost:5173",
-  KNOWN_NETLIFY,
-  process.env.ADDITIONAL_ORIGIN_1,
-  process.env.ADDITIONAL_ORIGIN_2,
-].filter(Boolean);
-
-const corsOptions = {
-  credentials: true,
-  origin(origin, cb) {
-    if (!origin) return cb(null, true);
-    const ok =
-      ALLOWED_ORIGINS.includes(origin) || NETLIFY_PATTERN.test(origin);
-    cb(ok ? null : new Error("Not allowed by CORS"), ok);
-  },
-};
-app.use(cors(corsOptions));
-app.options(/.*/, cors(corsOptions));
-
-/** ---------- Sessions (Mongo-backed) ---------- **/
+/* ---------- Sessions ---------- */
 const sessionOptions = {
   secret: process.env.SESSION_SECRET || "kambaz",
   resave: false,
   saveUninitialized: false,
-  store: MongoStore.create({
-    mongoUrl: CONNECTION_STRING,
-    collectionName: "sessions",
-    ttl: 14 * 24 * 60 * 60, // 14 days
-    autoRemove: "native",
-  }),
-  cookie: {
-    secure: !IS_DEV,                 // secure cookie in production
-    sameSite: IS_DEV ? "lax" : "none",
-    // do NOT set domain; let browser scope it to your Render host
-  },
+  // MemoryStore is fine for this course project. (Render may restart; users re-login.)
+  cookie: IS_DEV
+    ? { sameSite: "lax" } // dev: no HTTPS needed
+    : { sameSite: "none", secure: true }, // prod: cross-site cookie
 };
 
 if (!IS_DEV) {
-  app.set("trust proxy", 1);        // required on Render for secure cookies
+  // Required behind Render proxy so secure cookies are accepted
+  app.set("trust proxy", 1);
 }
-
 app.use(session(sessionOptions));
 
-/** ---------- Body parsing ---------- **/
+/* ---------- Body parsing ---------- */
 app.use(express.json());
 
-/** ---------- Routes ---------- **/
+/* ---------- Routes ---------- */
 UserRoutes(app);
 CourseRoutes(app);
 Lab5(app);
@@ -89,10 +62,9 @@ AssignmentRoutes(app);
 EnrollmentRoutes(app);
 QuizRoutes(app);
 
-/** ---------- Start ---------- **/
+/* ---------- Start ---------- */
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`NODE_ENV=${process.env.NODE_ENV}`);
-  console.log(`Allowed origins:`, ALLOWED_ORIGINS);
 });
