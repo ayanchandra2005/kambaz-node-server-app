@@ -5,7 +5,7 @@ import { v4 as uuidv4 } from "uuid";
 // ---------- Quizzes (top-level) ----------
 
 export async function findQuizzesForCourse(courseId) {
-  return model.find({ course: courseId }).sort({ createdAt: -1 });
+  return model.find({ course: courseId }).sort({ availableFrom: 1, createdAt: -1 });
 }
 
 export async function findQuizById(quizId) {
